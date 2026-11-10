@@ -15,13 +15,14 @@ import test_palmos_shared as foundation
 from test_palmos_shared_transports import TransportMachine, config
 from test_palmos_shared_usb import USBMachine
 from unicorn.m68k_const import UC_M68K_REG_A7, UC_M68K_REG_D0, UC_M68K_REG_PC
-OUT = Path(os.environ.get('PALMOS_CONFIG_BUILD', ROOT / 'build/palmos-usb'))
+OUT = Path(os.environ.get('PALMOS_CONFIG_BUILD', ROOT / 'build/palmos-3.1'))
 
 class ConfigMachine(USBMachine):
     def __init__(self):
         self.missing = self.incompatible = self.no_caps = False
         self.bad_readback = False
         self.old_usb = False
+        self.alert_choice = 0
         self.removes = 0
         super().__init__()
         sections = foundation.image.coff_sections((OUT / 'NioConfig').read_bytes())
@@ -45,6 +46,11 @@ class ConfigMachine(USBMachine):
     def hook(self, uc, pc, size, context):
         if bytes(uc.mem_read(pc,2)) == b'\x4e\x4f':
             trap, sp = self.read16(pc+2), uc.reg_read(UC_M68K_REG_A7)
+            if trap == 0xa192:
+                assert self.read16(sp) == 1001
+                uc.reg_write(UC_M68K_REG_D0, self.alert_choice)
+                uc.reg_write(UC_M68K_REG_PC, pc + 4)
+                return
             if trap == 0xa806 and self.old_usb:
                 uc.mem_write(self.read32(sp+2), struct.pack('>I',0x8000001f))
                 uc.reg_write(UC_M68K_REG_D0,0); uc.reg_write(UC_M68K_REG_PC,pc+4)
@@ -81,6 +87,24 @@ class ConfigMachine(USBMachine):
         assert not self.globals and not self.sessions and not self.serial_opened
 
 class PalmConfigTests(unittest.TestCase):
+    def test_recovery_requires_confirmation_saved_settings_and_new_capability(self):
+        m = ConfigMachine(); m.app('config_start'); m.action(1002)
+        m.app('config_recover', struct.pack('>H', 1))
+        self.assertIn('Save changes', m.text())
+        m.app('config_save')
+        key = (0x4e694c31, 0x4e35)
+        m.preferences[key] = (1, b'\x4e\x53\x50\x31')
+        m.action(1008)  # Cancel from the real confirmation path.
+        self.assertNotEqual(m.preferences[key][1], bytes(4))
+        m.alert_choice = 1; m.action(1008)
+        self.assertEqual(m.word('palmError'), 0)
+        self.assertEqual(m.preferences[key][1], bytes(4))
+        self.assertFalse(m.serial_opened); self.assertFalse(m.requests)
+        m.clean()
+        m = ConfigMachine(); m.old_usb = True; m.app('config_start')
+        m.app('config_recover', struct.pack('>H', 1))
+        self.assertIn('ABI 1.5', m.text()); m.clean()
+
     def test_metadata_resources_and_no_embedded_core(self):
         p=(OUT/'NioConfig.prc').read_bytes()
         self.assertEqual(p[:32].split(b'\0')[0],b'NIO Config')
@@ -88,6 +112,7 @@ class PalmConfigTests(unittest.TestCase):
         metadata,resources=foundation.image.prc(p)
         self.assertIn((b'tFRM',1000),resources)
         self.assertIn((b'tAIN',1000),resources)
+        self.assertIn((b'Talt',1001),resources)
         self.assertIn((b'code',1),resources)
         self.assertEqual(metadata['creator'],'NiC1')
         symbols=(OUT/'NioConfig.symbols').read_text()

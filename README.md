@@ -73,7 +73,7 @@ make test-amiga-host              # host-side logic tests (gcc only)
 
 See [docs/amiga-config.md](docs/amiga-config.md).
 
-## Palm OS 3.5
+## Palm OS (SDK 3.1 default; 3.5 optional)
 
 `make palmos FUJINET_NIO_LIB=../fujinet-nio-lib` builds `NioConfig.prc`
 against installed NioLib ABI 1.2 or later (USB is capability-gated), after NioLib is

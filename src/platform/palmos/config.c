@@ -6,6 +6,7 @@ static UInt16 libraryRef;
 static Boolean libraryLoaded, libraryOpen, clientOpen, dirty;
 static UInt32 clientToken;
 static Boolean usbSupported;
+static Boolean recoverySupported;
 static NioLibConfig config;
 static NioLibTransportStatus transportStatus;
 static UInt16 configFlags, nioResult;
@@ -82,6 +83,7 @@ void config_start(void)
         return;
     }
     usbSupported = (caps & nioLibCapUSB) != 0;
+    recoverySupported = version.abiMinor >= 5 && (caps & nioLibCapRecovery) != 0;
     libraryOpen = true;
     config.size = sizeof(config);
     palmError = NioLibGetConfig(libraryRef, &config, &configFlags);
@@ -141,6 +143,20 @@ void config_test(void)
     { Err testError = palmError; status_read(); if (!palmError) palmError = testError; }
 }
 
+void config_recover(UInt16 confirmed)
+{
+    if (!confirmed) return;
+    if (!libraryOpen) { message = "NioLib unavailable"; return; }
+    if (!recoverySupported) { message = "Reset needs NioLib ABI 1.5"; return; }
+    if (dirty) { message = "Save changes before Reset"; return; }
+    if (clientOpen) { message = "End connection test first"; return; }
+    palmError = NioLibResetTransport(libraryRef, config.transport, nioRecoveryPeerReset);
+    nioResult = 0;
+    if (palmError) { message = "Reset failed (busy/storage)"; return; }
+    status_read();
+    message = palmError ? "Reset; status unavailable" : "Transport state reset";
+}
+
 void config_action(UInt16 id)
 {
     if (!libraryOpen) return;
@@ -163,6 +179,7 @@ void config_action(UInt16 id)
     case 1004: if (config.transport != nioTransportSerial) return; config.serialOptions ^= nioSerialRTSCTS; break;
     case 1005: config_save(); return;
     case 1006: config_test(); return;
+    case 1008: config_recover(FrmAlert(1001) == 1); return;
     default: return;
     }
     dirty = true; message = "Unsaved changes";

@@ -277,5 +277,5 @@ The focused suite executes the compiled m68k app and installed-library code
 with mocked Palm OS/transport peers. No hardware, live serial ports or running
 NIO backend are used. `make test-palmos` points the tests at
 `$(FUJINET_NIO_LIB)/build/palmos-shared-$(PALMOS_SDK_VERSION)` and
-`build/palmos-usb`; override `NIOLIB_BUILD` and `PALMOS_BUILD` for other build
+`build/palmos-$(PALMOS_SDK_VERSION)` (SDK 3.1 by default); override `NIOLIB_BUILD` and `PALMOS_BUILD` for other build
 outputs. A missing Unicorn or build artifact is not a passed compiled-code test.

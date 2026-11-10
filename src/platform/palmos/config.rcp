@@ -5,8 +5,16 @@ BEGIN
  PUSHBUTTON "Springboard" ID 1001 AT (4 59 72 15) USABLE GROUP 1
  PUSHBUTTON "Serial" ID 1002 AT (78 59 36 15) USABLE GROUP 1
  PUSHBUTTON "USB" ID 1007 AT (116 59 40 15) USABLE GROUP 1
- BUTTON "Baud" ID 1003 AT (4 80 37 15) USABLE FRAME
- BUTTON "Flow" ID 1004 AT (44 80 34 15) USABLE FRAME
- BUTTON "Save" ID 1005 AT (81 80 34 15) USABLE FRAME
- BUTTON "Test" ID 1006 AT (118 80 38 15) USABLE FRAME
+ BUTTON "Baud" ID 1003 AT (3 80 29 15) USABLE FRAME
+ BUTTON "Flow" ID 1004 AT (34 80 27 15) USABLE FRAME
+ BUTTON "Save" ID 1005 AT (63 80 29 15) USABLE FRAME
+ BUTTON "Test" ID 1006 AT (94 80 27 15) USABLE FRAME
+ BUTTON "Reset" ID 1008 AT (123 80 34 15) USABLE FRAME
+END
+
+ALERT ID 1001 CONFIRMATION
+BEGIN
+ TITLE "Reset transport state?"
+ MESSAGE "End NIO apps first. Reset the serial/CS1 peer, or physically disconnect/reconnect USB to retire its old host owner. This clears local uncertainty; it cannot undo remote actions. Has the peer/link been reset?"
+ BUTTONS "Cancel" "Reset"
 END
